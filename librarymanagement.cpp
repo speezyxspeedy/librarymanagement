@@ -1,179 +1,247 @@
-from datetime import datetime
+#include <iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
 
+using namespace std;
 
-class Book:
-    def __init__(self, book_id: str, title: str, author: str, total_copies: int):
-        self.book_id = book_id
-        self.title = title
-        self.author = author
-        self.total_copies = total_copies
-        self.available_copies = total_copies
+// Helper: String ko lowercase me convert karne ke liye (case-insensitive search)
+string toLowerCase(string str) {
+    transform(str.begin(), str.end(), str.begin(), ::tolower);
+    return str;
+}
 
-    def __str__(self):
-        return f"[{self.book_id}] '{self.title}' by {self.author} | Available: {self.available_copies}/{self.total_copies}"
+// 1. Book Class
+class Book {
+public:
+    string bookId;
+    string title;
+    string author;
+    int totalCopies;
+    int availableCopies;
 
+    Book() : totalCopies(0), availableCopies(0) {}
 
-class Member:
-    def __init__(self, member_id: str, name: str):
-        self.member_id = member_id
-        self.name = name
-        # book_id -> issue_date
-        self.borrowed_books = {}
+    Book(string id, string t, string a, int copies) {
+        bookId = id;
+        title = t;
+        author = a;
+        totalCopies = copies;
+        availableCopies = copies;
+    }
 
-    def __str__(self):
-        borrowed = list(self.borrowed_books.keys())
-        return f"Member [{self.member_id}]: {self.name} | Borrowed Book IDs: {borrowed if borrowed else 'None'}"
+    void display() const {
+        cout << "[" << bookId << "] \"" << title << "\" by " << author 
+             << " | Available: " << availableCopies << "/" << totalCopies << "\n";
+    }
+};
 
+// 2. Member Class
+class Member {
+public:
+    string memberId;
+    string name;
+    vector<string> borrowedBooks; // Borrowed Book IDs list
 
-class LibrarySystem:
-    def __init__(self):
-        self.books = {}    # book_id -> Book object
-        self.members = {}  # member_id -> Member object
+    Member() {}
 
-    # 1. Add Book
-    def add_book(self, book_id: str, title: str, author: str, copies: int = 1):
-        if book_id in self.books:
-            self.books[book_id].total_copies += copies
-            self.books[book_id].available_copies += copies
-            print(f"Updated copies for book '{title}'. Total: {self.books[book_id].total_copies}")
-        else:
-            self.books[book_id] = Book(book_id, title, author, copies)
-            print(f"Book '{title}' added successfully!")
+    Member(string id, string n) {
+        memberId = id;
+        name = n;
+    }
 
-    # 2. Register Member
-    def register_member(self, member_id: str, name: str):
-        if member_id in self.members:
-            print(f"Member ID {member_id} already exists.")
-        else:
-            self.members[member_id] = Member(member_id, name)
-            print(f"Member '{name}' registered successfully!")
+    bool hasBook(const string& bookId) const {
+        return find(borrowedBooks.begin(), borrowedBooks.end(), bookId) != borrowedBooks.end();
+    }
 
-    # 3. Issue Book
-    def issue_book(self, book_id: str, member_id: str):
-        if book_id not in self.books:
-            print(f"Error: Book ID '{book_id}' not found.")
-            return
+    void display() const {
+        cout << "Member [" << memberId << "]: " << name << " | Borrowed IDs: ";
+        if (borrowedBooks.empty()) {
+            cout << "None";
+        } else {
+            for (const auto& bId : borrowedBooks) cout << bId << " ";
+        }
+        cout << "\n";
+    }
+};
 
-        if member_id not in self.members:
-            print(f"Error: Member ID '{member_id}' not found.")
-            return
+// 3. Library Management System Class
+class LibrarySystem {
+private:
+    unordered_map<string, Book> books;       // bookId -> Book
+    unordered_map<string, Member> members;   // memberId -> Member
 
-        book = self.books[book_id]
-        member = self.members[member_id]
+public:
+    // Add Book
+    void addBook(const string& id, const string& title, const string& author, int copies) {
+        if (books.find(id) != books.end()) {
+            books[id].totalCopies += copies;
+            books[id].availableCopies += copies;
+            cout << "Updated copies for book: " << title << "\n";
+        } else {
+            books[id] = Book(id, title, author, copies);
+            cout << "Book \"" << title << "\" added successfully!\n";
+        }
+    }
 
-        if book_id in member.borrowed_books:
-            print(f"Error: Member '{member.name}' already has a copy of this book.")
-            return
+    // Register Member
+    void registerMember(const string& id, const string& name) {
+        if (members.find(id) != members.end()) {
+            cout << "Error: Member ID already exists.\n";
+        } else {
+            members[id] = Member(id, name);
+            cout << "Member \"" << name << "\" registered successfully!\n";
+        }
+    }
 
-        if book.available_copies <= 0:
-            print(f"Sorry, '{book.title}' is currently out of stock.")
-            return
+    // Issue Book
+    void issueBook(const string& bookId, const string& memberId) {
+        if (books.find(bookId) == books.end()) {
+            cout << "Error: Book ID '" << bookId << "' not found.\n";
+            return;
+        }
+        if (members.find(memberId) == members.end()) {
+            cout << "Error: Member ID '" << memberId << "' not found.\n";
+            return;
+        }
 
-        book.available_copies -= 1
-        issue_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-        member.borrowed_books[book_id] = issue_time
-        print(f"Success: '{book.title}' issued to {member.name} on {issue_time}.")
+        Book& book = books[bookId];
+        Member& member = members[memberId];
 
-    # 4. Return Book
-    def return_book(self, book_id: str, member_id: str):
-        if book_id not in self.books or member_id not in self.members:
-            print("Error: Invalid Book ID or Member ID.")
-            return
+        if (member.hasBook(bookId)) {
+            cout << "Error: Member already borrowed this book.\n";
+            return;
+        }
+        if (book.availableCopies <= 0) {
+            cout << "Error: Book currently out of stock.\n";
+            return;
+        }
 
-        book = self.books[book_id]
-        member = self.members[member_id]
+        book.availableCopies--;
+        member.borrowedBooks.push_back(bookId);
+        cout << "Success: \"" << book.title << "\" issued to " << member.name << ".\n";
+    }
 
-        if book_id not in member.borrowed_books:
-            print(f"Error: Member '{member.name}' does not have this book borrowed.")
-            return
+    // Return Book
+    void returnBook(const string& bookId, const string& memberId) {
+        if (books.find(bookId) == books.end() || members.find(memberId) == members.end()) {
+            cout << "Error: Invalid Book ID or Member ID.\n";
+            return;
+        }
 
-        del member.borrowed_books[book_id]
-        book.available_copies += 1
-        print(f"Success: '{book.title}' returned by {member.name}.")
+        Book& book = books[bookId];
+        Member& member = members[memberId];
 
-    # 5. Search Functionality
-    def search_books(self, query: str):
-        query_lower = query.strip().lower()
-        results = [
-            b for b in self.books.values()
-            if query_lower in b.title.lower() or query_lower in b.author.lower()
-        ]
+        auto it = find(member.borrowedBooks.begin(), member.borrowedBooks.end(), bookId);
+        if (it == member.borrowedBooks.end()) {
+            cout << "Error: Member has not borrowed this book.\n";
+            return;
+        }
 
-        if not results:
-            print(f"No books found matching '{query}'.")
-        else:
-            print(f"\n--- Search Results for '{query}' ---")
-            for b in results:
-                print(b)
-            print("---------------------------------")
+        member.borrowedBooks.erase(it);
+        book.availableCopies++;
+        cout << "Success: \"" << book.title << "\" returned by " << member.name << ".\n";
+    }
 
-    # 6. Display All
-    def display_all_books(self):
-        if not self.books:
-            print("The library catalog is currently empty.")
-            return
-        print("\n=== Current Library Inventory ===")
-        for book in self.books.values():
-            print(book)
-        print("==================================")
+    // Search by Title or Author
+    void searchBook(const string& query) const {
+        string q = toLowerCase(query);
+        bool found = false;
+        cout << "\n--- Search Results for \"" << query << "\" ---\n";
+        for (const auto& pair : books) {
+            const Book& b = pair.second;
+            if (toLowerCase(b.title).find(q) != string::npos || 
+                toLowerCase(b.author).find(q) != string::npos) {
+                b.display();
+                found = true;
+            }
+        }
+        if (!found) {
+            cout << "No matching books found.\n";
+        }
+        cout << "--------------------------------------\n";
+    }
 
+    // Display All Books
+    void displayAllBooks() const {
+        if (books.empty()) {
+            cout << "Inventory is empty.\n";
+            return;
+        }
+        cout << "\n=== Library Catalog ===\n";
+        for (const auto& pair : books) {
+            pair.second.display();
+        }
+        cout << "=======================\n";
+    }
+};
 
-# CLI Menu Interface
-def main():
-    library = LibrarySystem()
+int main() {
+    LibrarySystem lib;
 
-    # Pre-populating sample data
-    library.add_book("B101", "Clean Code", "Robert C. Martin", 3)
-    library.add_book("B102", "The Pragmatic Programmer", "Andy Hunt", 2)
-    library.register_member("M001", "Rahul Sharma")
+    // Sample Data
+    lib.addBook("B101", "Let Us C", "Yashavant Kanetkar", 3);
+    lib.addBook("B102", "Effective Modern C++", "Scott Meyers", 2);
+    lib.registerMember("M01", "Aman Sharma");
 
-    while True:
-        print("\n===== LIBRARY MANAGEMENT SYSTEM =====")
-        print("1. Add New Book")
-        print("2. Register New Member")
-        print("3. Issue Book")
-        print("4. Return Book")
-        print("5. Search Book (Title / Author)")
-        print("6. Show All Books")
-        print("7. Exit")
-        choice = input("Enter your choice (1-7): ").strip()
+    int choice;
+    while (true) {
+        cout << "\n===== LIBRARY SYSTEM =====\n";
+        cout << "1. Add Book\n";
+        cout << "2. Register Member\n";
+        cout << "3. Issue Book\n";
+        cout << "4. Return Book\n";
+        cout << "5. Search Book (Title / Author)\n";
+        cout << "6. Display All Books\n";
+        cout << "7. Exit\n";
+        cout << "Enter choice (1-7): ";
+        
+        if (!(cin >> choice)) {
+            cin.clear();
+            cin.ignore(10000, '\n');
+            cout << "Invalid input! Please enter a number.\n";
+            continue;
+        }
+        cin.ignore(); // flush buffer
 
-        if choice == "1":
-            b_id = input("Enter Book ID: ").strip()
-            title = input("Enter Title: ").strip()
-            author = input("Enter Author: ").strip()
-            copies = int(input("Enter Number of Copies: ").strip() or "1")
-            library.add_book(b_id, title, author, copies)
+        if (choice == 1) {
+            string id, title, author;
+            int copies;
+            cout << "Book ID: "; getline(cin, id);
+            cout << "Title: "; getline(cin, title);
+            cout << "Author: "; getline(cin, author);
+            cout << "Copies: "; cin >> copies;
+            cin.ignore();
+            lib.addBook(id, title, author, copies);
+        } else if (choice == 2) {
+            string id, name;
+            cout << "Member ID: "; getline(cin, id);
+            cout << "Name: "; getline(cin, name);
+            lib.registerMember(id, name);
+        } else if (choice == 3) {
+            string bId, mId;
+            cout << "Book ID to issue: "; getline(cin, bId);
+            cout << "Member ID: "; getline(cin, mId);
+            lib.issueBook(bId, mId);
+        } else if (choice == 4) {
+            string bId, mId;
+            cout << "Book ID to return: "; getline(cin, bId);
+            cout << "Member ID: "; getline(cin, mId);
+            lib.returnBook(bId, mId);
+        } else if (choice == 5) {
+            string query;
+            cout << "Enter title or author: "; getline(cin, query);
+            lib.searchBook(query);
+        } else if (choice == 6) {
+            lib.displayAllBooks();
+        } else if (choice == 7) {
+            cout << "Exiting system. Dhanyawad!\n";
+            break;
+        } else {
+            cout << "Invalid choice! Enter 1-7.\n";
+        }
+    }
 
-        elif choice == "2":
-            m_id = input("Enter Member ID: ").strip()
-            name = input("Enter Member Name: ").strip()
-            library.register_member(m_id, name)
-
-        elif choice == "3":
-            b_id = input("Enter Book ID to issue: ").strip()
-            m_id = input("Enter Member ID: ").strip()
-            library.issue_book(b_id, m_id)
-
-        elif choice == "4":
-            b_id = input("Enter Book ID to return: ").strip()
-            m_id = input("Enter Member ID: ").strip()
-            library.return_book(b_id, m_id)
-
-        elif choice == "5":
-            query = input("Enter title or author name to search: ").strip()
-            library.search_books(query)
-
-        elif choice == "6":
-            library.display_all_books()
-
-        elif choice == "7":
-            print("Exiting Library Management System. Goodbye!")
-            break
-
-        else:
-            print("Invalid selection. Please choose an option between 1 and 7.")
-
-
-if __name__ == "__main__":
-    main()
+    return 0;
+}
